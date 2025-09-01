@@ -1,17 +1,22 @@
 import UIKit
+import SnapKit
+import PhotosUI
 
-final class AddEditRecipeViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+final class AddEditRecipeViewController: UIViewController {
     enum Mode { case add(Recipe?), edit(Recipe) }
     private let mode: Mode
     var onSaved: (() -> Void)?
-
+    
     init(mode: Mode) {
         self.mode = mode
         super.init(nibName: nil, bundle: nil)
     }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    //UI components
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    // MARK: - UI Components
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
     private let titleField = UITextField()
@@ -22,45 +27,54 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
     private let ingredientsTextView = UITextView()
     private let stepsTextView = UITextView()
     private let imageContainer = UIView()
-
-    //data
+    private let activityIndicator = UIActivityIndicatorView(style: .medium)
+    
+    // MARK: - Data
     private var selectedTypeId: Int?
     private var currentImage: UIImage?
-
-    //constants
+    private var originalImageFilename: String?
+    
+    // MARK: - Constants
     private enum Constants {
-        static let cornerRadius: CGFloat = 12
+        static let cornerRadius: CGFloat = 16
         static let shadowOpacity: Float = 0.1
-        static let shadowRadius: CGFloat = 8
+        static let shadowRadius: CGFloat = 4
         static let shadowOffset = CGSize(width: 0, height: 2)
         static let contentInsets = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        static let spacing: CGFloat = 16
+        static let spacing: CGFloat = 24
         static let imageHeight: CGFloat = 200
         static let textViewHeight: CGFloat = 120
+        static let animationDuration: TimeInterval = 0.3
     }
-
+    
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupAppearance()
         setupLayout()
         fillIfEditing()
         setupNavigationBar()
-        setupObservers()
-        ingredientsTextView.delegate = self
-        stepsTextView.delegate = self
+        setupTextViews()
     }
-
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateShadows()
     }
-
-    //setup
+    
+    // MARK: - Setup Methods
     private func setupAppearance() {
-        view.backgroundColor = .systemGroupedBackground
+        view.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.96, alpha: 1.0)
         title = isEditingMode ? "Edit Recipe" : "New Recipe"
+        
+        // Customize navigation bar
+        navigationController?.navigationBar.tintColor = .systemOrange
+        navigationController?.navigationBar.titleTextAttributes = [
+            .foregroundColor: UIColor.label,
+            .font: UIFont.systemFont(ofSize: 18, weight: .semibold)
+        ]
     }
-
+    
     private func setupNavigationBar() {
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .save,
@@ -72,85 +86,78 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
             target: self,
             action: #selector(cancelTapped)
         )
+        
+        navigationItem.rightBarButtonItem?.tintColor = .systemOrange
+        navigationItem.leftBarButtonItem?.tintColor = .systemOrange
     }
-
-    private func setupObservers() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(keyboardWillShow),
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(keyboardWillHide),
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil
-        )
+    
+    private func setupTextViews() {
+        ingredientsTextView.delegate = self
+        stepsTextView.delegate = self
+        
+        // Add placeholder functionality
+        setupPlaceholder(for: ingredientsTextView, text: "Enter ingredients (one per line)")
+        setupPlaceholder(for: stepsTextView, text: "Enter instructions (one per line)")
     }
-
+    
+    private func setupPlaceholder(for textView: UITextView, text: String) {
+        if textView.text.isEmpty {
+            textView.text = text
+            textView.textColor = .placeholderText
+        }
+    }
+    
     private func setupLayout() {
-        // scroll
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.keyboardDismissMode = .interactive
         view.addSubview(scrollView)
-
-        // content
+        scrollView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        
         contentStack.axis = .vertical
         contentStack.spacing = Constants.spacing
-        contentStack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStack)
-
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: Constants.contentInsets.top),
-            contentStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: Constants.contentInsets.left),
-            contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -Constants.contentInsets.right),
-            contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -Constants.contentInsets.bottom),
-            contentStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -Constants.contentInsets.left - Constants.contentInsets.right)
-        ])
-
-        // title
-        setupTitleField()
+        contentStack.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(Constants.contentInsets.top)
+            make.leading.equalToSuperview().offset(Constants.contentInsets.left)
+            make.trailing.equalToSuperview().offset(-Constants.contentInsets.right)
+            make.bottom.equalToSuperview().offset(-Constants.contentInsets.bottom)
+            make.width.equalToSuperview().offset(-Constants.contentInsets.left - Constants.contentInsets.right)
+        }
+        
+        // Add sections
         contentStack.addArrangedSubview(createSection(title: "TITLE", view: titleField))
-
-        // type
-        setupTypeField()
         contentStack.addArrangedSubview(createSection(title: "CATEGORY", view: typeField))
-
-        // image
-        setupImageSection()
         contentStack.addArrangedSubview(createSection(title: "IMAGE", view: imageContainer))
-
-        // ingredients
-        setupIngredientsTextView()
         contentStack.addArrangedSubview(createSection(title: "INGREDIENTS (one per line)", view: ingredientsTextView))
-
-        // steps
-        setupStepsTextView()
         contentStack.addArrangedSubview(createSection(title: "INSTRUCTIONS (one per line)", view: stepsTextView))
+        
+        // Setup individual components
+        setupTitleField()
+        setupTypeField()
+        setupImageSection()
+        setupIngredientsTextView()
+        setupStepsTextView()
     }
-
+    
     private func setupTitleField() {
         titleField.placeholder = "Enter recipe title"
-        titleField.font = UIFont.systemFont(ofSize: 17, weight: .medium)
-        titleField.backgroundColor = .secondarySystemGroupedBackground
+        titleField.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        titleField.backgroundColor = .white
         titleField.layer.cornerRadius = Constants.cornerRadius
-        titleField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
+        titleField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 0))
         titleField.leftViewMode = .always
-        titleField.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        titleField.delegate = self
+        titleField.snp.makeConstraints { make in
+            make.height.equalTo(50)
+        }
     }
-
+    
     private func setupTypeField() {
         typeField.placeholder = "Select category"
-        typeField.font = UIFont.systemFont(ofSize: 17, weight: .medium)
-        typeField.backgroundColor = .secondarySystemGroupedBackground
+        typeField.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        typeField.backgroundColor = .white
         typeField.layer.cornerRadius = Constants.cornerRadius
-        typeField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
+        typeField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 0))
         typeField.leftViewMode = .always
         
         picker.dataSource = self
@@ -159,75 +166,83 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
         
         let toolbar = UIToolbar()
         toolbar.sizeToFit()
-        toolbar.items = [
-            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(donePicker))
-        ]
+        let doneButton = UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(donePicker))
+        doneButton.tintColor = .systemOrange
+        let flexibleSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        toolbar.items = [flexibleSpace, doneButton]
         typeField.inputAccessoryView = toolbar
-        typeField.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        typeField.snp.makeConstraints { make in
+            make.height.equalTo(50)
+        }
     }
-
+    
     private func setupImageSection() {
-        
-        imageContainer.backgroundColor = .secondarySystemGroupedBackground
+        imageContainer.backgroundColor = .white
         imageContainer.layer.cornerRadius = Constants.cornerRadius
         imageContainer.clipsToBounds = true
         
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.backgroundColor = .tertiarySystemGroupedBackground
+        imageView.backgroundColor = UIColor(red: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)
         imageView.layer.cornerRadius = Constants.cornerRadius - 2
-        imageView.translatesAutoresizingMaskIntoConstraints = false
         
         chooseImageButton.setTitle("Choose Image", for: .normal)
-        chooseImageButton.setTitleColor(.systemBlue, for: .normal)
+        chooseImageButton.setTitleColor(.systemOrange, for: .normal)
         chooseImageButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         chooseImageButton.addTarget(self, action: #selector(chooseImage), for: .touchUpInside)
-        chooseImageButton.translatesAutoresizingMaskIntoConstraints = false
         
-        let stack = UIStackView(arrangedSubviews: [imageView, chooseImageButton])
+        activityIndicator.hidesWhenStopped = true
+        activityIndicator.color = .systemOrange
+        
+        let stack = UIStackView(arrangedSubviews: [imageView, chooseImageButton, activityIndicator])
         stack.axis = .vertical
-        stack.spacing = 12
-        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.spacing = 16
+        stack.alignment = .center
         imageContainer.addSubview(stack)
+        stack.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(20)
+            make.leading.equalToSuperview().offset(20)
+            make.trailing.equalToSuperview().offset(-20)
+            make.bottom.equalToSuperview().offset(-20)
+        }
         
-        NSLayoutConstraint.activate([
-            imageView.heightAnchor.constraint(equalToConstant: Constants.imageHeight),
-            
-            stack.topAnchor.constraint(equalTo: imageContainer.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: imageContainer.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: imageContainer.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: imageContainer.bottomAnchor, constant: -16)
-        ])
+        imageView.snp.makeConstraints { make in
+            make.height.equalTo(Constants.imageHeight)
+            make.width.equalTo(stack)
+        }
     }
-
+    
     private func setupIngredientsTextView() {
         setupTextView(ingredientsTextView)
         ingredientsTextView.isScrollEnabled = false
-        ingredientsTextView.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.textViewHeight).isActive = true
+        ingredientsTextView.snp.makeConstraints { make in
+            make.height.greaterThanOrEqualTo(Constants.textViewHeight)
+        }
     }
-
+    
     private func setupStepsTextView() {
         setupTextView(stepsTextView)
         stepsTextView.isScrollEnabled = false
-        stepsTextView.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.textViewHeight + 40).isActive = true
+        stepsTextView.snp.makeConstraints { make in
+            make.height.greaterThanOrEqualTo(Constants.textViewHeight + 40)
+        }
     }
-
+    
     private func setupTextView(_ textView: UITextView) {
-        textView.font = UIFont.systemFont(ofSize: 16)
-        textView.backgroundColor = .secondarySystemGroupedBackground
+        textView.font = UIFont.systemFont(ofSize: 15)
+        textView.backgroundColor = .white
         textView.layer.cornerRadius = Constants.cornerRadius
-        textView.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 16, right: 12)
+        textView.textContainerInset = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
         textView.textContainer.lineFragmentPadding = 0
         textView.showsVerticalScrollIndicator = false
         textView.alwaysBounceVertical = false
     }
-
+    
     private func createSection(title: String, view: UIView) -> UIStackView {
         let label = UILabel()
         label.text = title
         label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
-        label.textColor = .secondaryLabel
+        label.textColor = .systemOrange
         label.textAlignment = .left
         
         let stack = UIStackView(arrangedSubviews: [label, view])
@@ -235,7 +250,7 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
         stack.spacing = 8
         return stack
     }
-
+    
     private func updateShadows() {
         let viewsToShadow: [UIView] = [titleField, typeField, imageContainer, ingredientsTextView, stepsTextView]
         
@@ -247,12 +262,12 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
             view.layer.masksToBounds = false
         }
     }
-
+    
     // MARK: - Data Handling
     private var isEditingMode: Bool {
         if case .edit = mode { return true } else { return false }
     }
-
+    
     private func fillIfEditing() {
         switch mode {
         case .add(let suggestion):
@@ -260,15 +275,28 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
                 titleField.text = suggestion.title
                 selectedTypeId = suggestion.typeId
                 typeField.text = RecipeStore.shared.typeName(for: suggestion.typeId)
+                if let row = RecipeStore.shared.recipeTypes.firstIndex(where: { $0.id == suggestion.typeId }) {
+                    picker.selectRow(row, inComponent: 0, animated: false)
+                }
             }
+            
         case .edit(let recipe):
             titleField.text = recipe.title
             selectedTypeId = recipe.typeId
             typeField.text = RecipeStore.shared.typeName(for: recipe.typeId)
             ingredientsTextView.text = recipe.ingredients.joined(separator: "\n")
             stepsTextView.text = recipe.steps.joined(separator: "\n")
+            originalImageFilename = recipe.imageFilename
             
-            if let image = RecipeStore.shared.image(for: recipe.imageFilename) {
+            // Remove placeholder styling if there's content
+            if !recipe.ingredients.isEmpty {
+                ingredientsTextView.textColor = .darkGray
+            }
+            if !recipe.steps.isEmpty {
+                stepsTextView.textColor = .darkGray
+            }
+            
+            if let image = RecipeStore.shared.loadImage(named: recipe.imageFilename) {
                 imageView.image = image
                 currentImage = image
                 chooseImageButton.setTitle("Change Image", for: .normal)
@@ -279,31 +307,138 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
             }
         }
     }
-
-    // actions
+    
+    // MARK: - Actions
     @objc private func donePicker() {
-        view.endEditing(true)
+        // Get the currently selected row from the picker
+        let selectedRow = picker.selectedRow(inComponent: 0)
+        
+        // Update the text field with the selected category
+        if selectedRow >= 0 && selectedRow < RecipeStore.shared.recipeTypes.count {
+            let selectedType = RecipeStore.shared.recipeTypes[selectedRow]
+            typeField.text = selectedType.name
+            selectedTypeId = selectedType.id
+        }
+        
+        view.endEditing(true) // Dismiss the keyboard
     }
-
+    
     @objc private func chooseImage() {
+        let alert = UIAlertController(title: "Choose Image", message: nil, preferredStyle: .actionSheet)
+        
+        alert.addAction(UIAlertAction(title: "Take Photo", style: .default) { _ in
+            self.presentCameraPicker()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Choose from Library", style: .default) { _ in
+            self.presentPhotoPicker()
+        })
+        
+        if imageView.image != nil {
+            alert.addAction(UIAlertAction(title: "Remove Image", style: .destructive) { _ in
+                self.currentImage = nil
+                self.imageView.image = nil
+                self.chooseImageButton.setTitle("Choose Image", for: .normal)
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alert, animated: true)
+    }
+    
+    private func presentCameraPicker() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            showAlert("Camera not available")
+            return
+        }
+        
         let picker = UIImagePickerController()
-        picker.sourceType = .photoLibrary
+        picker.sourceType = .camera
         picker.delegate = self
         picker.allowsEditing = true
         present(picker, animated: true)
     }
-
+    
+    private func presentPhotoPicker() {
+        var configuration = PHPickerConfiguration()
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+        
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+    
     @objc private func saveTapped() {
+        guard validateForm() else { return }
+        
+        activityIndicator.startAnimating()
+        navigationItem.rightBarButtonItem?.isEnabled = false
+        
+        // Process image asynchronously to avoid UI freeze
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            var imageFilename: String?
+            if let image = self.currentImage {
+                do {
+                    imageFilename = try RecipeStore.shared.saveImage(image)
+                } catch {
+                    DispatchQueue.main.async {
+                        self.showAlert("Failed to save image: \(error.localizedDescription)")
+                        self.activityIndicator.stopAnimating()
+                        self.navigationItem.rightBarButtonItem?.isEnabled = true
+                    }
+                    return
+                }
+            }
+            
+            // Create or update recipe on main thread
+            DispatchQueue.main.async {
+                self.saveRecipe(with: imageFilename)
+            }
+        }
+    }
+    
+    private func validateForm() -> Bool {
         guard let title = titleField.text?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
             showAlert("Please enter a title")
-            return
+            return false
         }
         
         guard let typeId = selectedTypeId else {
             showAlert("Please choose a recipe type")
-            return
+            return false
         }
-
+        
+        let ingredients = ingredientsTextView.text
+            .split(separator: "\n")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        
+        if ingredients.isEmpty {
+            showAlert("Please enter at least one ingredient")
+            return false
+        }
+        
+        let steps = stepsTextView.text
+            .split(separator: "\n")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        
+        if steps.isEmpty {
+            showAlert("Please enter at least one instruction step")
+            return false
+        }
+        
+        return true
+    }
+    
+    private func saveRecipe(with imageFilename: String?) {
+        let title = titleField.text!.trimmingCharacters(in: .whitespacesAndNewlines)
+        let typeId = selectedTypeId!
+        
         let ingredients = ingredientsTextView.text
             .split(separator: "\n")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
@@ -313,98 +448,108 @@ final class AddEditRecipeViewController: UIViewController, UIImagePickerControll
             .split(separator: "\n")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-
-        var imageFilename: String? = nil
-        if let image = currentImage {
-            imageFilename = RecipeStore.shared.saveImage(image)
-        }
-
+        
         switch mode {
         case .add:
-            let recipe = Recipe(
-                title: title,
-                typeId: typeId,
-                imageFilename: imageFilename,
-                ingredients: ingredients,
-                steps: steps
-            )
-            RecipeStore.shared.add(recipe)
-            
-        case .edit(var recipe):
+            let recipe = Recipe()
             recipe.title = title
             recipe.typeId = typeId
-            recipe.ingredients = ingredients
-            recipe.steps = steps
+            recipe.imageFilename = imageFilename
+            recipe.ingredients.append(objectsIn: ingredients)
+            recipe.steps.append(objectsIn: steps)
+            RecipeStore.shared.add(recipe)
+            
+        case .edit(let recipe):
+            // Update the recipe properties
+            recipe.title = title
+            recipe.typeId = typeId
+            
+            // Clear and repopulate ingredients
+            recipe.ingredients.removeAll()
+            recipe.ingredients.append(objectsIn: ingredients)
+            
+            // Clear and repopulate steps
+            recipe.steps.removeAll()
+            recipe.steps.append(objectsIn: steps)
+            
+            // Only update image filename if we have a new image
             if let filename = imageFilename {
                 recipe.imageFilename = filename
             }
+            
+            // Call RecipeStore's update method which handles the Realm transaction
             RecipeStore.shared.update(recipe)
         }
         
+        activityIndicator.stopAnimating()
+        navigationItem.rightBarButtonItem?.isEnabled = true
         onSaved?()
         navigationController?.popViewController(animated: true)
     }
-
+    
     @objc private func cancelTapped() {
-        navigationController?.popViewController(animated: true)
-    }
-
-    //keyboard handling
-    @objc private func keyboardWillShow(notification: NSNotification) {
-        guard let userInfo = notification.userInfo,
-              let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-        
-        let keyboardHeight = keyboardFrame.height
-        scrollView.contentInset.bottom = keyboardHeight
-        scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
-    }
-
-    @objc private func keyboardWillHide(notification: NSNotification) {
-        scrollView.contentInset = .zero
-        scrollView.verticalScrollIndicatorInsets = .zero
-    }
-
-    // MARK: - Image Picker Delegate
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        defer { picker.dismiss(animated: true) }
-        
-        let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage
-        if let image = image {
-            currentImage = image
-            imageView.image = image
-            chooseImageButton.setTitle("Change Image", for: .normal)
+        if hasUnsavedChanges() {
+            showUnsavedChangesAlert()
+        } else {
+            navigationController?.popViewController(animated: true)
         }
     }
-
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true)
+    
+    private func hasUnsavedChanges() -> Bool {
+        // Check if any field has been modified
+        switch mode {
+        case .add:
+            return !titleField.text!.isEmpty ||
+                   selectedTypeId != nil ||
+                   currentImage != nil ||
+                   !ingredientsTextView.text.isEmpty ||
+                   !stepsTextView.text.isEmpty
+        case .edit(let recipe):
+            return titleField.text != recipe.title ||
+                   selectedTypeId != recipe.typeId ||
+                   currentImage != nil || // Image changed
+                   ingredientsTextView.text != recipe.ingredients.joined(separator: "\n") ||
+                   stepsTextView.text != recipe.steps.joined(separator: "\n")
+        }
     }
-
-    //alert
+    
+    private func showUnsavedChangesAlert() {
+        let alert = UIAlertController(
+            title: "Unsaved Changes",
+            message: "You have unsaved changes. Are you sure you want to discard them?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Discard", style: .destructive) { _ in
+            self.navigationController?.popViewController(animated: true)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alert, animated: true)
+    }
+    
+    // MARK: - Alert
     private func showAlert(_ message: String) {
         let alert = UIAlertController(title: "Missing Information", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
-
-    // clear
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
 }
 
+// MARK: - Extensions
 extension AddEditRecipeViewController: UIPickerViewDataSource, UIPickerViewDelegate {
     func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
     
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        RecipeStore.shared.recipeTypes.count
+        return RecipeStore.shared.recipeTypes.count
     }
     
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-        RecipeStore.shared.recipeTypes[row].name
+        return RecipeStore.shared.recipeTypes[row].name
     }
     
-    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, forComponent component: Int) {
         let type = RecipeStore.shared.recipeTypes[row]
         selectedTypeId = type.id
         typeField.text = type.name
@@ -420,8 +565,28 @@ extension AddEditRecipeViewController: UIPickerViewDataSource, UIPickerViewDeleg
 }
 
 extension AddEditRecipeViewController: UITextViewDelegate {
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        // Clear placeholder text
+        if textView.textColor == .placeholderText {
+            textView.text = nil
+            textView.textColor = .darkGray
+        }
+    }
+    
+    func textViewDidEndEditing(_ textView: UITextView) {
+        // Restore placeholder if empty
+        if textView.text.isEmpty {
+            if textView == ingredientsTextView {
+                textView.text = "Enter ingredients (one per line)"
+            } else {
+                textView.text = "Enter instructions (one per line)"
+            }
+            textView.textColor = .placeholderText
+        }
+    }
+    
     func textViewDidChange(_ textView: UITextView) {
-        // Calculate the required size for the text
+        // Auto-resize text view
         let fixedWidth = textView.frame.size.width
         let newSize = textView.sizeThatFits(CGSize(width: fixedWidth, height: .greatestFiniteMagnitude))
         
@@ -435,13 +600,59 @@ extension AddEditRecipeViewController: UITextViewDelegate {
             }
         }
         
-        UIView.animate(withDuration: 0.2) {
+        UIView.animate(withDuration: Constants.animationDuration) {
             self.view.layoutIfNeeded()
         }
     }
+}
+
+extension AddEditRecipeViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        if textField == titleField {
+            typeField.becomeFirstResponder()
+        }
+        return true
+    }
+}
+
+// MARK: - UIImagePickerControllerDelegate
+extension AddEditRecipeViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        defer { picker.dismiss(animated: true) }
+        
+        let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage
+        if let image = image {
+            currentImage = image
+            imageView.image = image
+            chooseImageButton.setTitle("Change Image", for: .normal)
+        }
+    }
     
-    func textViewDidBeginEditing(_ textView: UITextView) {
-        let rect = textView.convert(textView.bounds, to: scrollView)
-        scrollView.scrollRectToVisible(rect, animated: true)
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+    }
+}
+
+// MARK: - PHPickerViewControllerDelegate
+extension AddEditRecipeViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        
+        guard let result = results.first else { return }
+        
+        result.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] object, error in
+            if let error = error {
+                print("Error loading image: \(error)")
+                return
+            }
+            
+            if let image = object as? UIImage {
+                DispatchQueue.main.async {
+                    self?.currentImage = image
+                    self?.imageView.image = image
+                    self?.chooseImageButton.setTitle("Change Image", for: .normal)
+                }
+            }
+        }
     }
 }
