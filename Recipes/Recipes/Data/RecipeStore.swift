@@ -10,21 +10,17 @@ class RecipeStore {
     private let queue: DispatchQueue
     
     private init() {
-        // Initialize Realm
         realm = try! Realm()
         queue = DispatchQueue(label: "com.recipeapp.recipestore", attributes: .concurrent)
         
-        // Load initial data if needed
         loadInitialData()
     }
     
     private func loadInitialData() {
-        // Check if we have recipe types, if not, load from JSON
         if realm.objects(RecipeType.self).isEmpty {
             loadRecipeTypesFromJSON()
         }
         
-        // Check if we have sample recipes, if not, seed them
         if realm.objects(Recipe.self).isEmpty {
             seedSampleData()
         }
@@ -78,7 +74,7 @@ class RecipeStore {
         }
     }
     
-    // MARK: - CRUD Operations
+//CRUD Operations
     func add(_ recipe: Recipe) {
         try? realm.write {
             realm.add(recipe)
@@ -103,7 +99,7 @@ class RecipeStore {
         }
     }
     
-    // MARK: - Image Management
+    // Image Management
     private let imageStorage: ImageStorage = FileSystemImageStorage()
     
     func saveImage(_ image: UIImage) throws -> String {
@@ -114,7 +110,6 @@ class RecipeStore {
         return imageStorage.loadImage(named: filename)
     }
     
-    // MARK: - Helper Methods
     func typeName(for id: Int) -> String {
         return realm.object(ofType: RecipeType.self, forPrimaryKey: id)?.name ?? "Unknown Type"
     }

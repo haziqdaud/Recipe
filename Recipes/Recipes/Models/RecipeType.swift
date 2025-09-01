@@ -5,12 +5,10 @@ class RecipeType: Object, Codable, Identifiable {
     @objc dynamic var id: Int = 0
     @objc dynamic var name: String = ""
     
-    // Primary key for Realm
     override static func primaryKey() -> String? {
         return "id"
     }
     
-    // Codable support
     enum CodingKeys: String, CodingKey {
         case id, name
     }
@@ -28,7 +26,6 @@ class RecipeType: Object, Codable, Identifiable {
         try container.encode(name, forKey: .name)
     }
     
-    // Equatable conformance (compare by primary key)
     static func == (lhs: RecipeType, rhs: RecipeType) -> Bool {
         return lhs.id == rhs.id
     }

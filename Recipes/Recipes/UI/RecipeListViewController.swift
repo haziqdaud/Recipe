@@ -3,7 +3,7 @@ import RealmSwift
 import SnapKit
 
 final class RecipeListViewController: UIViewController {
-    // MARK: - Properties
+    // Properties
     private let tableView = UITableView(frame: .zero, style: .plain)
     private var filteredRecipes: Results<Recipe>?
     private var selectedTypeId: Int?
@@ -25,7 +25,6 @@ final class RecipeListViewController: UIViewController {
         return collectionView
     }()
     
-    // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
         setupViewController()
@@ -46,7 +45,7 @@ final class RecipeListViewController: UIViewController {
         navigationController?.setNavigationBarHidden(false, animated: animated)
     }
     
-    // MARK: - Setup Methods
+    // Setup Methods
     private func setupViewController() {
         view.backgroundColor = .white
         categories = RecipeStore.shared.recipeTypes
@@ -145,13 +144,13 @@ final class RecipeListViewController: UIViewController {
         tableView.delegate = self
     }
     
-    // MARK: - Data Methods
+    // Data Methods
     private func reloadData() {
         filteredRecipes = RecipeStore.shared.getRecipesByType(selectedTypeId)
         tableView.reloadData()
     }
     
-    // MARK: - Navigation Methods
+    //Navigation Methods
     @objc private func navigateToAddRecipe() {
         let addViewController = AddEditRecipeViewController(mode: .add(nil))
         addViewController.onSaved = { [weak self] in
@@ -169,7 +168,7 @@ final class RecipeListViewController: UIViewController {
     }
 }
 
-// MARK: - Category Collection View
+// Category Collection View
 extension RecipeListViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return (categories?.count ?? 0) + 1 // +1 for the "All" button
@@ -220,7 +219,7 @@ extension RecipeListViewController: UICollectionViewDelegate, UICollectionViewDa
     }
 }
 
-// MARK: - Category Collection View Cell
+// Category Collection View Cell
 final class CategoryCollectionViewCell: UICollectionViewCell {
     private let titleLabel = UILabel()
     
@@ -259,7 +258,7 @@ final class CategoryCollectionViewCell: UICollectionViewCell {
     }
 }
 
-// MARK: - Recipe Table View Cell
+// Recipe Table View Cell
 final class RecipeTableViewCell: UITableViewCell {
     // UI Components
     private let containerView = UIView()
@@ -345,7 +344,7 @@ final class RecipeTableViewCell: UITableViewCell {
     }
 }
 
-// MARK: - UITableViewDataSource & UITableViewDelegate
+// UITableViewDataSource and UITableViewDelegate
 extension RecipeListViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return filteredRecipes?.count ?? 0

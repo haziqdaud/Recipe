@@ -2,11 +2,11 @@ import UIKit
 import SnapKit
 
 final class RecipeDetailViewController: UIViewController {
-    // MARK: - Properties
+    // Properties
     private var recipe: Recipe
     var onChanged: (() -> Void)?
     
-    // MARK: - UI Components
+    // UI Components
     private let scrollView = UIScrollView()
     private let contentStackView = UIStackView()
     private let imageView = UIImageView()
@@ -15,7 +15,7 @@ final class RecipeDetailViewController: UIViewController {
     private let ingredientsLabel = UILabel()
     private let stepsLabel = UILabel()
     
-    // MARK: - Initialization
+    // Initialization
     init(recipe: Recipe) {
         self.recipe = recipe
         super.init(nibName: nil, bundle: nil)
@@ -25,7 +25,7 @@ final class RecipeDetailViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
-    // MARK: - Lifecycle Methods
+    // Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
         setupViewController()
@@ -34,10 +34,10 @@ final class RecipeDetailViewController: UIViewController {
         setupNavigationBar()
     }
     
-    // MARK: - Setup Methods
+    // Setup Methods
     private func setupViewController() {
         title = "Recipe Details"
-        view.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.96, alpha: 1.0) // Light gray background
+        view.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.96, alpha: 1.0) //
     }
     
     private func setupNavigationBar() {
@@ -155,7 +155,7 @@ final class RecipeDetailViewController: UIViewController {
         configureImage()
     }
     
-    // MARK: - Configuration Methods
+    // Configuration Methods
     private func configureTitleSection() {
         titleLabel.text = recipe.title
         typeLabel.text = RecipeStore.shared.typeName(for: recipe.typeId).uppercased()
@@ -219,7 +219,7 @@ final class RecipeDetailViewController: UIViewController {
         imageView.image = RecipeStore.shared.loadImage(named: recipe.imageFilename)
     }
     
-    // MARK: - Factory Method
+    //Factory Method
     private func makeSection(_ title: String, content: UIView, icon: String) -> UIView {
         let container = UIView()
         container.backgroundColor = .white
@@ -260,7 +260,6 @@ final class RecipeDetailViewController: UIViewController {
         // Configure content
         content.setContentCompressionResistancePriority(.required, for: .vertical)
         
-        // Build hierarchy
         headerStackView.addArrangedSubview(iconImageView)
         headerStackView.addArrangedSubview(sectionTitleLabel)
         
@@ -278,7 +277,7 @@ final class RecipeDetailViewController: UIViewController {
         return container
     }
     
-    // MARK: - Action Methods
+    // Action Methods
     @objc private func editTapped() {
         let editViewController = AddEditRecipeViewController(mode: .edit(recipe))
         editViewController.onSaved = { [weak self] in

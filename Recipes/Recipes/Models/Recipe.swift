@@ -12,12 +12,10 @@ class Recipe: Object, Codable, Identifiable {
     let ingredients = List<String>()
     let steps = List<String>()
     
-    // Primary key for Realm
     override static func primaryKey() -> String? {
         return "id"
     }
     
-    // Codable support
     enum CodingKeys: String, CodingKey {
         case id, title, typeId, imageFilename, imageAssetName, ingredients, steps, createdAt
     }
@@ -51,12 +49,10 @@ class Recipe: Object, Codable, Identifiable {
         try container.encode(Array(steps), forKey: .steps)
     }
     
-    // Custom Equatable implementation (compare by primary key)
     static func == (lhs: Recipe, rhs: Recipe) -> Bool {
         return lhs.id == rhs.id
     }
     
-    // Helper to get the appropriate image identifier
     func imageIdentifier() -> String? {
         return imageFilename ?? imageAssetName
     }

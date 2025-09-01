@@ -16,7 +16,7 @@ final class AddEditRecipeViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
-    // MARK: - UI Components
+    // UI Components
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
     private let titleField = UITextField()
@@ -29,12 +29,12 @@ final class AddEditRecipeViewController: UIViewController {
     private let imageContainer = UIView()
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     
-    // MARK: - Data
+    //Data
     private var selectedTypeId: Int?
     private var currentImage: UIImage?
     private var originalImageFilename: String?
     
-    // MARK: - Constants
+    // Constants
     private enum Constants {
         static let cornerRadius: CGFloat = 16
         static let shadowOpacity: Float = 0.1
@@ -47,7 +47,7 @@ final class AddEditRecipeViewController: UIViewController {
         static let animationDuration: TimeInterval = 0.3
     }
     
-    // MARK: - Lifecycle
+    //Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupAppearance()
@@ -62,7 +62,7 @@ final class AddEditRecipeViewController: UIViewController {
         updateShadows()
     }
     
-    // MARK: - Setup Methods
+    // Setup Methods
     private func setupAppearance() {
         view.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.96, alpha: 1.0)
         title = isEditingMode ? "Edit Recipe" : "New Recipe"
@@ -95,7 +95,7 @@ final class AddEditRecipeViewController: UIViewController {
         ingredientsTextView.delegate = self
         stepsTextView.delegate = self
         
-        // Add placeholder functionality
+        // Add placeholder
         setupPlaceholder(for: ingredientsTextView, text: "Enter ingredients (one per line)")
         setupPlaceholder(for: stepsTextView, text: "Enter instructions (one per line)")
     }
@@ -263,7 +263,7 @@ final class AddEditRecipeViewController: UIViewController {
         }
     }
     
-    // MARK: - Data Handling
+    // Data Handling
     private var isEditingMode: Bool {
         if case .edit = mode { return true } else { return false }
     }
@@ -288,7 +288,7 @@ final class AddEditRecipeViewController: UIViewController {
             stepsTextView.text = recipe.steps.joined(separator: "\n")
             originalImageFilename = recipe.imageFilename
             
-            // Remove placeholder styling if there's content
+            // Remove placeholder styling
             if !recipe.ingredients.isEmpty {
                 ingredientsTextView.textColor = .darkGray
             }
@@ -310,17 +310,15 @@ final class AddEditRecipeViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func donePicker() {
-        // Get the currently selected row from the picker
         let selectedRow = picker.selectedRow(inComponent: 0)
         
-        // Update the text field with the selected category
         if selectedRow >= 0 && selectedRow < RecipeStore.shared.recipeTypes.count {
             let selectedType = RecipeStore.shared.recipeTypes[selectedRow]
             typeField.text = selectedType.name
             selectedTypeId = selectedType.id
         }
         
-        view.endEditing(true) // Dismiss the keyboard
+        view.endEditing(true)
     }
     
     @objc private func chooseImage() {
@@ -376,7 +374,6 @@ final class AddEditRecipeViewController: UIViewController {
         activityIndicator.startAnimating()
         navigationItem.rightBarButtonItem?.isEnabled = false
         
-        // Process image asynchronously to avoid UI freeze
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
@@ -394,7 +391,6 @@ final class AddEditRecipeViewController: UIViewController {
                 }
             }
             
-            // Create or update recipe on main thread
             DispatchQueue.main.async {
                 self.saveRecipe(with: imageFilename)
             }
@@ -477,7 +473,6 @@ final class AddEditRecipeViewController: UIViewController {
                 recipe.imageFilename = filename
             }
             
-            // Call RecipeStore's update method which handles the Realm transaction
             RecipeStore.shared.update(recipe)
         }
         
@@ -496,7 +491,6 @@ final class AddEditRecipeViewController: UIViewController {
     }
     
     private func hasUnsavedChanges() -> Bool {
-        // Check if any field has been modified
         switch mode {
         case .add:
             return !titleField.text!.isEmpty ||
@@ -529,7 +523,7 @@ final class AddEditRecipeViewController: UIViewController {
         present(alert, animated: true)
     }
     
-    // MARK: - Alert
+    // Alert
     private func showAlert(_ message: String) {
         let alert = UIAlertController(title: "Missing Information", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -537,7 +531,7 @@ final class AddEditRecipeViewController: UIViewController {
     }
 }
 
-// MARK: - Extensions
+// Extensions
 extension AddEditRecipeViewController: UIPickerViewDataSource, UIPickerViewDelegate {
     func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
     
@@ -574,7 +568,6 @@ extension AddEditRecipeViewController: UITextViewDelegate {
     }
     
     func textViewDidEndEditing(_ textView: UITextView) {
-        // Restore placeholder if empty
         if textView.text.isEmpty {
             if textView == ingredientsTextView {
                 textView.text = "Enter ingredients (one per line)"
@@ -586,7 +579,6 @@ extension AddEditRecipeViewController: UITextViewDelegate {
     }
     
     func textViewDidChange(_ textView: UITextView) {
-        // Auto-resize text view
         let fixedWidth = textView.frame.size.width
         let newSize = textView.sizeThatFits(CGSize(width: fixedWidth, height: .greatestFiniteMagnitude))
         
@@ -615,7 +607,7 @@ extension AddEditRecipeViewController: UITextFieldDelegate {
     }
 }
 
-// MARK: - UIImagePickerControllerDelegate
+// UIImagePickerControllerDelegate
 extension AddEditRecipeViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         defer { picker.dismiss(animated: true) }
@@ -633,7 +625,7 @@ extension AddEditRecipeViewController: UIImagePickerControllerDelegate, UINaviga
     }
 }
 
-// MARK: - PHPickerViewControllerDelegate
+// PHPickerViewControllerDelegate
 extension AddEditRecipeViewController: PHPickerViewControllerDelegate {
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)

@@ -10,7 +10,7 @@ class FileSystemImageStorage: ImageStorage {
     private let imagesDirectory = "RecipeImages"
     
     init() {
-        // Create images directory if it doesn't exist
+        // create images directory if it no exist
         let imagesPath = documentsDirectory.appendingPathComponent(imagesDirectory)
         if !FileManager.default.fileExists(atPath: imagesPath.path) {
             try? FileManager.default.createDirectory(at: imagesPath, withIntermediateDirectories: true)
@@ -36,7 +36,7 @@ class FileSystemImageStorage: ImageStorage {
     func loadImage(named filename: String?) -> UIImage? {
         guard let filename = filename else { return nil }
         
-        // First try to load from filesystem (for user-added images)
+        // for user added images
         let imagePath = documentsDirectory.appendingPathComponent(imagesDirectory).appendingPathComponent(filename)
         if FileManager.default.fileExists(atPath: imagePath.path),
            let imageData = try? Data(contentsOf: imagePath),
@@ -44,7 +44,7 @@ class FileSystemImageStorage: ImageStorage {
             return image
         }
         
-        // If not found in filesystem, try to load from asset catalog (for sample images)
+        // for sample images
         return UIImage(named: filename)
     }
 }
