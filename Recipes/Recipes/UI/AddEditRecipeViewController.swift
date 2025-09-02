@@ -456,21 +456,16 @@ final class AddEditRecipeViewController: UIViewController {
             RecipeStore.shared.add(recipe)
             
         case .edit(let recipe):
-            // Update the recipe properties
-            recipe.title = title
-            recipe.typeId = typeId
-            
-            // Clear and repopulate ingredients
-            recipe.ingredients.removeAll()
-            recipe.ingredients.append(objectsIn: ingredients)
-            
-            // Clear and repopulate steps
-            recipe.steps.removeAll()
-            recipe.steps.append(objectsIn: steps)
-            
-            // Only update image filename if we have a new image
-            if let filename = imageFilename {
-                recipe.imageFilename = filename
+            RecipeStore.shared.updateRecipe(recipe) { recipeToUpdate in
+                recipeToUpdate.title = title
+                recipeToUpdate.typeId = typeId
+                recipeToUpdate.ingredients.removeAll()
+                recipeToUpdate.ingredients.append(objectsIn: ingredients)
+                recipeToUpdate.steps.removeAll()
+                recipeToUpdate.steps.append(objectsIn: steps)
+                if let filename = imageFilename {
+                    recipeToUpdate.imageFilename = filename
+                }
             }
             
             RecipeStore.shared.update(recipe)

@@ -81,6 +81,25 @@ class RecipeStore {
         }
     }
     
+    func updateRecipe(_ recipe: Recipe, with updates: (Recipe) -> Void) {
+        print("Starting recipe update for: \(recipe.title)")
+        
+        do {
+            let realm = try Realm()
+            print("Realm instance created successfully")
+            
+            try realm.write {
+                print("Beginning write transaction")
+                updates(recipe)
+                print("Write transaction completed")
+            }
+            
+        } catch {
+            print("Update failed: \(error.localizedDescription)")
+           
+        }
+    }
+    
     func getRecipeType(by id: Int) -> RecipeType? {
         return realm.objects(RecipeType.self).filter("id == %@", id).first
     }
