@@ -1,4 +1,5 @@
 import UIKit
+import RealmSwift
 import SnapKit
 import PhotosUI
 
@@ -456,15 +457,16 @@ final class AddEditRecipeViewController: UIViewController {
             RecipeStore.shared.add(recipe)
             
         case .edit(let recipe):
-            RecipeStore.shared.updateRecipe(recipe) { recipeToUpdate in
-                recipeToUpdate.title = title
-                recipeToUpdate.typeId = typeId
-                recipeToUpdate.ingredients.removeAll()
-                recipeToUpdate.ingredients.append(objectsIn: ingredients)
-                recipeToUpdate.steps.removeAll()
-                recipeToUpdate.steps.append(objectsIn: steps)
+            let realm = try! Realm()
+            try! realm.write { 
+                recipe.title = title
+                recipe.typeId = typeId
+                recipe.ingredients.removeAll()
+                recipe.ingredients.append(objectsIn: ingredients)
+                recipe.steps.removeAll()
+                recipe.steps.append(objectsIn: steps)
                 if let filename = imageFilename {
-                    recipeToUpdate.imageFilename = filename
+                    recipe.imageFilename = filename
                 }
             }
             
